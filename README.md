@@ -1,11 +1,16 @@
 # 🎙️ VoxTask — Autonomous Voice-Driven Small Language Model (SLM)
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-22D3EE?style=for-the-badge&logo=github)](https://subashis-dev.github.io/vox-task-slm/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.6%2B_CUDA_12.4-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Model Parameters](https://img.shields.io/badge/Parameters-4.8M_SLM-22D3EE?style=for-the-badge&logo=cpu&logoColor=black)](#-neural-architecture)
 [![Pre-trained Weights](https://img.shields.io/badge/Pre--trained_Weights-ZERO_(Trained_From_Scratch)-8B5CF6?style=for-the-badge)](#-training-dynamics--convergence)
 [![Offline](https://img.shields.io/badge/Privacy-100%25_Offline_(Zero_Cloud_APIs)-10B981?style=for-the-badge&logo=shield&logoColor=white)](#-key-highlights)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](#-docker-deployment)
 [![License](https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge)](LICENSE)
+
+> 🌐 **Try the Live Interactive Demo directly in your browser:**  
+> 👉 **[https://subashis-dev.github.io/vox-task-slm/](https://subashis-dev.github.io/vox-task-slm/)**  
+> *(Runs 100% client-side via WebAssembly & ONNX Runtime Web — zero server required!)*
 
 An end-to-end, privacy-first **Small Language Model (4.8M parameters)** designed and trained completely **from scratch** in pure PyTorch (initialized with standard random Gaussian distributions `torch.randn`, with zero reliance on Hugging Face, OpenAI, or external pre-trained foundation models).
 

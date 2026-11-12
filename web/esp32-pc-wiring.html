@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 PC Remote Power Switch — Interactive Wiring Guide</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #030712; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .wire-active { stroke-width: 6 !important; filter: drop-shadow(0 0 8px currentColor); }
+  </style>
+</head>
+<body class="text-slate-100 min-h-screen p-3 md:p-8">
+
+  <div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Top Navigation & Title Bar -->
+    <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 text-xs mono uppercase font-medium mb-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+          Fritzing-Style Hardware Schematic
+        </div>
+        <h1 class="text-2xl md:text-4xl font-extrabold text-white tracking-tight">Turn On PC with ESP32</h1>
+        <p class="text-slate-400 text-sm mt-1">Realistic step-by-step physical wiring diagrams & motherboard settings</p>
+      </div>
+
+      <!-- Mode Selector Tabs -->
+      <div class="flex items-center bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl gap-1">
+        <button id="tab-relay-btn" onclick="switchTab('relay')" class="px-4 py-2 rounded-lg text-xs font-semibold transition bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20">
+          Option 1: Relay Module (Easiest)
+        </button>
+        <button id="tab-opto-btn" onclick="switchTab('opto')" class="px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white">
+          Option 2: PC817 Optocoupler (Pro)
+        </button>
+        <button id="tab-wol-btn" onclick="switchTab('wol')" class="px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white">
+          Option 3: Wake-on-LAN (Zero Wires)
+        </button>
+      </div>
+    </header>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: RELAY MODULE WIRING (PHYSICAL REALISTIC FRITZING STYLE) -->
+    <!-- ========================================================================= -->
+    <div id="view-relay" class="space-y-6">
+      
+      <!-- Interactive Controls -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900/60 border border-slate-800/80 px-4 py-3 rounded-xl">
+        <span class="text-xs text-slate-400 mono">💡 Click buttons to highlight exact wire connections:</span>
+        <div class="flex flex-wrap gap-2 text-xs mono">
+          <button onclick="highlightWire('all')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Show All Wires</button>
+          <button onclick="highlightWire('sig')" class="px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">Signal (GPIO 23)</button>
+          <button onclick="highlightWire('pwr')" class="px-2.5 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">5V Power (VIN)</button>
+          <button onclick="highlightWire('gnd')" class="px-2.5 py-1 rounded bg-slate-500/20 text-slate-300 border border-slate-500/40">Ground (GND)</button>
+          <button onclick="highlightWire('sw')" class="px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">Motherboard Switch</button>
+        </div>
+      </div>
+
+      <!-- Realistic SVG Diagram -->
+      <div class="bg-gradient-to-b from-slate-900 to-[#070d1d] border border-slate-800 rounded-2xl p-4 md:p-8 shadow-2xl overflow-x-auto">
+        <svg viewBox="0 0 1000 520" class="w-full h-auto min-w-[850px] select-none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <!-- Drop shadows -->
+            <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+              <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000000" flood-opacity="0.6"/>
+            </filter>
+            <!-- PCB Gradients -->
+            <linearGradient id="espPcb" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1e293b"/>
+              <stop offset="100%" stop-color="#090d16"/>
+            </linearGradient>
+            <linearGradient id="relayPcb" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#0369a1"/>
+              <stop offset="100%" stop-color="#0c4a6e"/>
+            </linearGradient>
+            <linearGradient id="mbPcb" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#14532d"/>
+              <stop offset="100%" stop-color="#052e16"/>
+            </linearGradient>
+            <!-- Wire Glows -->
+            <filter id="wireGlow">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- Subtle Background Grid -->
+          <rect width="1000" height="520" fill="#030712" rx="16"/>
+          <g stroke="#ffffff" stroke-opacity="0.03" stroke-width="1">
+            <path d="M 0 100 H 1000 M 0 200 H 1000 M 0 300 H 1000 M 0 400 H 1000" />
+            <path d="M 200 0 V 520 M 400 0 V 520 M 600 0 V 520 M 800 0 V 520" />
+          </g>
+
+          <!-- =============================================================== -->
+          <!-- WIRES (Rendered with natural curve arcs) -->
+          <!-- =============================================================== -->
+          <g id="wires-layer">
+            <!-- Wire 1: ESP32 VIN -> Relay VCC (Red) -->
+            <path id="w-pwr" d="M 235 240 C 310 240, 340 180, 420 180" fill="none" stroke="#ef4444" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+            
+            <!-- Wire 2: ESP32 GND -> Relay GND (Black/Slate) -->
+            <path id="w-gnd" d="M 235 275 C 310 275, 340 215, 420 215" fill="none" stroke="#64748b" stroke-width="4.5" stroke-linecap="round"/>
+            
+            <!-- Wire 3: ESP32 GPIO 23 -> Relay IN (Signal) (Yellow/Amber) -->
+            <path id="w-sig" d="M 235 310 C 310 310, 340 250, 420 250" fill="none" stroke="#f59e0b" stroke-width="4.5" stroke-linecap="round"/>
+
+            <!-- Wire 4: Relay COM -> Motherboard PWR_SW (-) (Green) -->
+            <path id="w-sw-com" d="M 590 190 C 660 190, 680 230, 770 230" fill="none" stroke="#10b981" stroke-width="4.5" stroke-linecap="round"/>
+
+            <!-- Wire 5: Relay NO -> Motherboard PWR_SW (+) (Cyan) -->
+            <path id="w-sw-no" d="M 590 240 C 660 240, 680 180, 750 180" fill="none" stroke="#06b6d4" stroke-width="4.5" stroke-linecap="round"/>
+          </g>
+
+          <!-- =============================================================== -->
+          <!-- MODULE 1: ESP32 DEVELOPMENT BOARD (LEFT) -->
+          <!-- =============================================================== -->
+          <g transform="translate(60, 60)" filter="url(#cardShadow)">
+            <!-- PCB Body -->
+            <rect width="175" height="400" rx="14" fill="url(#espPcb)" stroke="#38bdf8" stroke-width="2"/>
+            
+            <!-- Metallic RF Shield (ESP-WROOM-32) -->
+            <rect x="25" y="30" width="125" height="110" rx="6" fill="#475569" stroke="#94a3b8" stroke-width="1.5"/>
+            <text x="87" y="75" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">ESP-WROOM-32</text>
+            <text x="87" y="95" fill="#94a3b8" font-size="10" text-anchor="middle" font-family="'JetBrains Mono', monospace">Wi-Fi + BLE SoC</text>
+            
+            <!-- Micro-USB / Type-C Connector -->
+            <rect x="58" y="380" width="58" height="22" rx="4" fill="#64748b" stroke="#cbd5e1" stroke-width="1.5"/>
+            <text x="87" y="395" fill="#ffffff" font-size="9" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">USB 5V</text>
+
+            <!-- Reset and Boot Buttons -->
+            <rect x="25" y="340" width="22" height="18" rx="3" fill="#334155" stroke="#64748b"/>
+            <text x="36" y="353" fill="#cbd5e1" font-size="8" text-anchor="middle">EN</text>
+            <rect x="128" y="340" width="22" height="18" rx="3" fill="#334155" stroke="#64748b"/>
+            <text x="139" y="353" fill="#cbd5e1" font-size="8" text-anchor="middle">BOOT</text>
+
+            <!-- Right-Side Header Pins -->
+            <!-- VIN (5V) -->
+            <circle cx="175" cy="180" r="6" fill="#ef4444" stroke="#ffffff" stroke-width="2"/>
+            <text x="160" y="184" fill="#fca5a5" font-size="11" font-weight="bold" text-anchor="end" font-family="'JetBrains Mono', monospace">VIN (5V)</text>
+
+            <!-- GND -->
+            <circle cx="175" cy="215" r="6" fill="#64748b" stroke="#ffffff" stroke-width="2"/>
+            <text x="160" y="219" fill="#cbd5e1" font-size="11" font-weight="bold" text-anchor="end" font-family="'JetBrains Mono', monospace">GND</text>
+
+            <!-- GPIO 23 -->
+            <circle cx="175" cy="250" r="6" fill="#f59e0b" stroke="#ffffff" stroke-width="2"/>
+            <text x="160" y="254" fill="#fde68a" font-size="11" font-weight="bold" text-anchor="end" font-family="'JetBrains Mono', monospace">GPIO 23</text>
+
+            <text x="87" y="440" fill="#38bdf8" font-size="14" font-weight="bold" text-anchor="middle">ESP32 Board</text>
+          </g>
+
+          <!-- =============================================================== -->
+          <!-- MODULE 2: BLUE 1-CHANNEL RELAY MODULE (MIDDLE) -->
+          <!-- =============================================================== -->
+          <g transform="translate(420, 110)" filter="url(#cardShadow)">
+            <!-- Relay PCB -->
+            <rect width="170" height="280" rx="12" fill="url(#relayPcb)" stroke="#38bdf8" stroke-width="2"/>
+            <text x="85" y="35" fill="#e0f2fe" font-size="13" font-weight="bold" text-anchor="middle">1-Channel Relay</text>
+            <text x="85" y="52" fill="#7dd3fc" font-size="10" text-anchor="middle" font-family="'JetBrains Mono', monospace">3.3V / 5V Active-LOW</text>
+
+            <!-- Big Blue Songle Box -->
+            <rect x="25" y="70" width="120" height="110" rx="6" fill="#0284c7" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="85" y="115" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">SONGLE</text>
+            <text x="85" y="135" fill="#e0f2fe" font-size="9" text-anchor="middle">10A 250VAC • 10A 30VDC</text>
+            <text x="85" y="152" fill="#bae6fd" font-size="8" text-anchor="middle">SRD-05VDC-SL-C</text>
+
+            <!-- Input Header Pins (Left Side) -->
+            <!-- VCC Pin -->
+            <circle cx="0" cy="70" r="6" fill="#ef4444" stroke="#ffffff" stroke-width="2"/>
+            <text x="12" y="74" fill="#fca5a5" font-size="10" font-weight="bold" font-family="'JetBrains Mono', monospace">VCC</text>
+
+            <!-- GND Pin -->
+            <circle cx="0" cy="105" r="6" fill="#64748b" stroke="#ffffff" stroke-width="2"/>
+            <text x="12" y="109" fill="#cbd5e1" font-size="10" font-weight="bold" font-family="'JetBrains Mono', monospace">GND</text>
+
+            <!-- IN (Signal Pin) -->
+            <circle cx="0" cy="140" r="6" fill="#f59e0b" stroke="#ffffff" stroke-width="2"/>
+            <text x="12" y="144" fill="#fde68a" font-size="10" font-weight="bold" font-family="'JetBrains Mono', monospace">IN (Sig)</text>
+
+            <!-- Output Screw Terminal Block (Right Side) -->
+            <rect x="135" y="200" width="35" height="70" rx="4" fill="#047857" stroke="#10b981" stroke-width="1"/>
+            
+            <!-- COM Pin (Common) -->
+            <circle cx="170" cy="215" r="6" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+            <text x="128" y="220" fill="#a7f3d0" font-size="10" font-weight="bold" text-anchor="end" font-family="'JetBrains Mono', monospace">COM</text>
+
+            <!-- NO Pin (Normally Open) -->
+            <circle cx="170" cy="255" r="6" fill="#06b6d4" stroke="#ffffff" stroke-width="2"/>
+            <text x="128" y="260" fill="#a5f3fc" font-size="10" font-weight="bold" text-anchor="end" font-family="'JetBrains Mono', monospace">NO</text>
+          </g>
+
+          <!-- =============================================================== -->
+          <!-- MODULE 3: PC MOTHERBOARD FRONT PANEL (RIGHT) -->
+          <!-- =============================================================== -->
+          <g transform="translate(690, 80)" filter="url(#cardShadow)">
+            <!-- Motherboard PCB -->
+            <rect width="260" height="340" rx="16" fill="url(#mbPcb)" stroke="#22c55e" stroke-width="2"/>
+            <text x="130" y="38" fill="#86efac" font-size="15" font-weight="bold" text-anchor="middle">PC Motherboard</text>
+            <text x="130" y="58" fill="#4ade80" font-size="11" text-anchor="middle" font-family="'JetBrains Mono', monospace">Header: F_PANEL / JFP1</text>
+
+            <!-- Front Panel Plastic Pin Base -->
+            <rect x="35" y="80" width="190" height="140" rx="8" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+            
+            <!-- Pins Layout (Standard 9-Pin ATX Front Panel) -->
+            <!-- Top Row: Pins 1-4 -->
+            <!-- Pin 1 & 2: PWR LED -->
+            <circle cx="60" cy="100" r="5" fill="#475569" stroke="#94a3b8"/>
+            <circle cx="90" cy="100" r="5" fill="#475569" stroke="#94a3b8"/>
+            <text x="75" y="118" fill="#94a3b8" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">PWR LED</text>
+
+            <!-- Pin 3: POWER SW (+) [Connects to Relay NO] -->
+            <circle cx="130" cy="100" r="8" fill="#06b6d4" stroke="#ffffff" stroke-width="2.5" filter="url(#wireGlow)"/>
+            <!-- Pin 4: POWER SW (-) GND -->
+            <circle cx="160" cy="100" r="5" fill="#475569" stroke="#94a3b8"/>
+            <text x="145" y="120" fill="#67e8f9" font-size="10" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">PWR_SW (+)</text>
+
+            <!-- Bottom Row: Pins 5-9 -->
+            <!-- Pins 5 & 6: HDD LED -->
+            <circle cx="60" cy="150" r="5" fill="#475569" stroke="#94a3b8"/>
+            <circle cx="90" cy="150" r="5" fill="#475569" stroke="#94a3b8"/>
+            <text x="75" y="168" fill="#94a3b8" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">HDD LED</text>
+
+            <!-- Pins 7 & 8: RESET SW / GND -->
+            <circle cx="130" cy="150" r="5" fill="#475569" stroke="#94a3b8"/>
+            <!-- Pin 8: Ground Pin [Connects to Relay COM] -->
+            <circle cx="160" cy="150" r="8" fill="#10b981" stroke="#ffffff" stroke-width="2.5" filter="url(#wireGlow)"/>
+            <text x="160" y="172" fill="#6ee7b7" font-size="10" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">GND (-)</text>
+
+            <!-- Helper Box -->
+            <rect x="35" y="240" width="190" height="75" rx="8" fill="#052e16" stroke="#16a34a" stroke-width="1"/>
+            <text x="130" y="262" fill="#86efac" font-size="11" font-weight="bold" text-anchor="middle">How PC Powers On:</text>
+            <text x="130" y="280" fill="#cbd5e1" font-size="9.5" text-anchor="middle">Relay closes for 300ms</text>
+            <text x="130" y="296" fill="#cbd5e1" font-size="9.5" text-anchor="middle">Motherboard boots instantly!</text>
+          </g>
+
+          <!-- Floating Wire Label Badges -->
+          <g transform="translate(260, 160)">
+            <rect width="130" height="24" rx="6" fill="#030712" stroke="#ef4444" stroke-width="1.5"/>
+            <text x="65" y="16" fill="#fca5a5" font-size="10" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">5V Power (Red)</text>
+          </g>
+          <g transform="translate(260, 225)">
+            <rect width="130" height="24" rx="6" fill="#030712" stroke="#64748b" stroke-width="1.5"/>
+            <text x="65" y="16" fill="#cbd5e1" font-size="10" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">Ground (Black)</text>
+          </g>
+          <g transform="translate(260, 290)">
+            <rect width="130" height="24" rx="6" fill="#030712" stroke="#f59e0b" stroke-width="1.5"/>
+            <text x="65" y="16" fill="#fde68a" font-size="10" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">Signal (Yellow)</text>
+          </g>
+
+          <g transform="translate(610, 150)">
+            <rect width="135" height="24" rx="6" fill="#030712" stroke="#06b6d4" stroke-width="1.5"/>
+            <text x="67" y="16" fill="#67e8f9" font-size="10" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">Switch + (Cyan)</text>
+          </g>
+          <g transform="translate(610, 215)">
+            <rect width="135" height="24" rx="6" fill="#030712" stroke="#10b981" stroke-width="1.5"/>
+            <text x="67" y="16" fill="#6ee7b7" font-size="10" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">Switch - (Green)</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Quick Step-By-Step Instruction Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl">
+          <div class="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-400 font-bold flex items-center justify-center text-xs mb-2">1</div>
+          <h4 class="font-bold text-white text-sm mb-1">Power the Relay</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Connect <strong class="text-rose-400">VIN</strong> on the ESP32 to <strong class="text-rose-400">VCC</strong> on the Relay, and <strong class="text-slate-300">GND</strong> to <strong class="text-slate-300">GND</strong>.
+          </p>
+        </div>
+
+        <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl">
+          <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 font-bold flex items-center justify-center text-xs mb-2">2</div>
+          <h4 class="font-bold text-white text-sm mb-1">Wire the Trigger Signal</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Connect <strong class="text-amber-400">GPIO 23</strong> on the ESP32 to the <strong class="text-amber-400">IN</strong> (Signal) pin on the Relay module.
+          </p>
+        </div>
+
+        <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl">
+          <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold flex items-center justify-center text-xs mb-2">3</div>
+          <h4 class="font-bold text-white text-sm mb-1">Connect to Motherboard</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Connect the Relay's <strong class="text-cyan-400">NO</strong> and <strong class="text-emerald-400">COM</strong> screw terminals directly to the motherboard's <strong class="text-white">POWER SW</strong> pins.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: OPTOCOUPLER WIRING (PC817 CHIP) -->
+    <!-- ========================================================================= -->
+    <div id="view-opto" class="hidden space-y-6">
+      
+      <div class="bg-gradient-to-b from-slate-900 to-[#070d1d] border border-slate-800 rounded-2xl p-4 md:p-8 shadow-2xl overflow-x-auto">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+            <span>🔬</span> PC817 Optocoupler Circuit (100% Optical Isolation)
+          </h2>
+          <span class="text-xs mono px-2.5 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/30">Zero Moving Parts & Completely Silent</span>
+        </div>
+
+        <!-- Optocoupler SVG Diagram -->
+        <svg viewBox="0 0 950 420" class="w-full h-auto min-w-[800px] select-none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="950" height="420" fill="#030712" rx="16"/>
+
+          <!-- ESP32 Board -->
+          <g transform="translate(60, 40)">
+            <rect width="160" height="340" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+            <text x="80" y="45" fill="#38bdf8" font-size="13" font-weight="bold" text-anchor="middle">ESP32 Dev Board</text>
+            
+            <circle cx="160" cy="140" r="6" fill="#f59e0b" stroke="#ffffff" stroke-width="2"/>
+            <text x="145" y="144" fill="#fde68a" font-size="11" font-weight="bold" text-anchor="end" font-family="'JetBrains Mono', monospace">GPIO 23</text>
+
+            <circle cx="160" cy="220" r="6" fill="#64748b" stroke="#ffffff" stroke-width="2"/>
+            <text x="145" y="224" fill="#cbd5e1" font-size="11" font-weight="bold" text-anchor="end" font-family="'JetBrains Mono', monospace">GND</text>
+          </g>
+
+          <!-- 220 Ohm Resistor -->
+          <g transform="translate(320, 130)">
+            <rect x="0" y="2" width="75" height="18" rx="4" fill="#d97706" stroke="#b45309"/>
+            <rect x="15" y="2" width="6" height="18" fill="#dc2626"/>
+            <rect x="28" y="2" width="6" height="18" fill="#dc2626"/>
+            <rect x="42" y="2" width="6" height="18" fill="#78350f"/>
+            <rect x="58" y="2" width="6" height="18" fill="#facc15"/>
+            <text x="37" y="-6" fill="#fde68a" font-size="11" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">220Ω</text>
+          </g>
+
+          <!-- PC817 DIP-4 IC -->
+          <g transform="translate(470, 110)">
+            <rect width="130" height="140" rx="8" fill="#1e293b" stroke="#a855f7" stroke-width="2"/>
+            <!-- Dot on Pin 1 -->
+            <circle cx="25" cy="25" r="5" fill="#c084fc"/>
+            <text x="65" y="65" fill="#ffffff" font-size="14" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">PC817</text>
+            <text x="65" y="85" fill="#c084fc" font-size="10" text-anchor="middle">Optocoupler</text>
+            <text x="65" y="102" fill="#94a3b8" font-size="8.5" text-anchor="middle">Infrared Light Barrier</text>
+
+            <!-- Pin 1 -->
+            <circle cx="0" cy="30" r="6" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"/>
+            <text x="12" y="34" fill="#fde68a" font-size="9" font-family="'JetBrains Mono', monospace">Pin 1 (Anode)</text>
+
+            <!-- Pin 2 -->
+            <circle cx="0" cy="110" r="6" fill="#64748b" stroke="#ffffff" stroke-width="1.5"/>
+            <text x="12" y="114" fill="#cbd5e1" font-size="9" font-family="'JetBrains Mono', monospace">Pin 2 (Cathode)</text>
+
+            <!-- Pin 4 -->
+            <circle cx="130" cy="30" r="6" fill="#06b6d4" stroke="#ffffff" stroke-width="1.5"/>
+            <text x="118" y="34" fill="#67e8f9" font-size="9" text-anchor="end" font-family="'JetBrains Mono', monospace">Pin 4 (Collector)</text>
+
+            <!-- Pin 3 -->
+            <circle cx="130" cy="110" r="6" fill="#10b981" stroke="#ffffff" stroke-width="1.5"/>
+            <text x="118" y="114" fill="#6ee7b7" font-size="9" text-anchor="end" font-family="'JetBrains Mono', monospace">Pin 3 (Emitter)</text>
+          </g>
+
+          <!-- Motherboard Front Panel -->
+          <g transform="translate(700, 60)">
+            <rect width="200" height="300" rx="14" fill="#064e3b" stroke="#22c55e" stroke-width="2"/>
+            <text x="100" y="40" fill="#86efac" font-size="14" font-weight="bold" text-anchor="middle">Motherboard</text>
+            <text x="100" y="60" fill="#4ade80" font-size="10" text-anchor="middle" font-family="'JetBrains Mono', monospace">F_PANEL Header</text>
+
+            <rect x="35" y="90" width="130" height="110" rx="6" fill="#0f172a" stroke="#334155"/>
+            <!-- Pins -->
+            <circle cx="80" cy="120" r="7" fill="#06b6d4" stroke="#ffffff" stroke-width="2"/>
+            <text x="80" y="142" fill="#67e8f9" font-size="9" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">PWR (+)</text>
+
+            <circle cx="120" cy="120" r="7" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+            <text x="120" y="142" fill="#6ee7b7" font-size="9" font-weight="bold" text-anchor="middle" font-family="'JetBrains Mono', monospace">GND (-)</text>
+          </g>
+
+          <!-- Wires -->
+          <!-- GPIO 23 to Resistor -->
+          <path d="M 220 140 L 320 140" stroke="#f59e0b" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <!-- Resistor to PC817 Pin 1 -->
+          <path d="M 395 140 L 470 140" stroke="#f59e0b" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <!-- GND to PC817 Pin 2 -->
+          <path d="M 220 220 L 470 220" stroke="#64748b" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <!-- PC817 Pin 4 to Motherboard PWR (+) -->
+          <path d="M 600 140 C 640 140, 680 180, 780 180" stroke="#06b6d4" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <!-- PC817 Pin 3 to Motherboard GND (-) -->
+          <path d="M 600 220 C 660 220, 720 180, 820 180" stroke="#10b981" stroke-width="4" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 3: WAKE-ON-LAN (ZERO HARDWARE WIRES) -->
+    <!-- ========================================================================= -->
+    <div id="view-wol" class="hidden space-y-6">
+      
+      <div class="bg-gradient-to-b from-slate-900 to-[#070d1d] border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <span>📡</span> Wake-on-LAN (WoL) — Zero Wires Needed
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">If your PC has an Ethernet cable plugged into your home Wi-Fi router, the ESP32 can turn it on over the network!</p>
+          </div>
+          <span class="text-xs mono px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">100% Software Wireless</span>
+        </div>
+
+        <!-- WoL Network Flow Diagram -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center my-6">
+          <div class="bg-slate-950 border border-cyan-500/30 p-5 rounded-xl">
+            <span class="text-3xl block mb-2">📱 / 🗣️</span>
+            <h4 class="font-bold text-cyan-300 text-sm">1. You Trigger Command</h4>
+            <p class="text-xs text-slate-400 mt-1">Via mobile web UI or voice: "Turn on desktop PC"</p>
+          </div>
+
+          <div class="bg-slate-950 border border-purple-500/30 p-5 rounded-xl">
+            <span class="text-3xl block mb-2">⚡</span>
+            <h4 class="font-bold text-purple-300 text-sm">2. ESP32 Sends UDP Magic Packet</h4>
+            <p class="text-xs text-slate-400 mt-1">Broadcasts 102-byte frame containing your PC's MAC address across your local Wi-Fi</p>
+          </div>
+
+          <div class="bg-slate-950 border border-emerald-500/30 p-5 rounded-xl">
+            <span class="text-3xl block mb-2">🖥️</span>
+            <h4 class="font-bold text-emerald-300 text-sm">3. PC Motherboard Wakes Up</h4>
+            <p class="text-xs text-slate-400 mt-1">NIC detects the packet and signals the ATX power supply to boot Windows!</p>
+          </div>
+        </div>
+
+        <!-- How to Enable WoL in Windows & BIOS -->
+        <div class="bg-slate-950/80 border border-slate-800 p-5 rounded-xl space-y-3 text-xs text-slate-300">
+          <h4 class="font-bold text-white text-sm flex items-center gap-2">
+            <span>⚙️</span> Required 2-Minute PC Setup for Wake-on-LAN:
+          </h4>
+          <ol class="list-decimal list-inside space-y-2 text-slate-300">
+            <li><strong>In PC BIOS (press DEL on boot):</strong> Go to <em>Advanced &rarr; APM Configuration</em> and enable <strong class="text-cyan-300">"Power On By PCI-E / PME"</strong>.</li>
+            <li><strong>In Windows Device Manager:</strong> Open <em>Network Adapters &rarr; Your Intel/Realtek Ethernet Card &rarr; Properties &rarr; Power Management</em>. Check <strong class="text-emerald-300">"Allow this device to wake the computer"</strong> and <strong class="text-emerald-300">"Only allow a magic packet to wake the computer"</strong>.</li>
+            <li><strong>Get Your PC's MAC Address:</strong> Open Command Prompt and type <code class="text-amber-300 bg-slate-900 px-1 py-0.5 rounded">getmac</code>. That's the address we'll put in the ESP32 code!</li>
+          </ol>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- BIOS & USB STANDBY POWER SETTING -->
+    <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h3 class="text-white font-bold text-sm flex items-center gap-2">
+          <span>⚡</span> How to Keep the ESP32 Powered When PC is Off
+        </h3>
+        <p class="text-xs text-slate-400 mt-1 max-w-2xl">
+          By default, modern PCs cut USB power when shut down to save power. To keep your ESP32 on, enter BIOS and set <strong class="text-cyan-300">"ErP Ready" &rarr; Disabled</strong>. This leaves +5V Standby power active on your motherboard USB ports!
+        </p>
+      </div>
+      <div class="shrink-0">
+        <span class="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-400/20 text-cyan-300 text-xs mono">
+          BIOS: ErP = Disabled
+        </span>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function switchTab(mode) {
+      ['relay', 'opto', 'wol'].forEach(k => {
+        document.getElementById(`view-${k}`).classList.add('hidden');
+        document.getElementById(`tab-${k}-btn`).className = 'px-4 py-2 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white';
+      });
+
+      document.getElementById(`view-${mode}`).classList.remove('hidden');
+      document.getElementById(`tab-${mode}-btn`).className = 'px-4 py-2 rounded-lg text-xs font-semibold transition bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20';
+    }
+
+    function highlightWire(type) {
+      const wires = ['w-pwr', 'w-gnd', 'w-sig', 'w-sw-com', 'w-sw-no'];
+      wires.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.style.opacity = '0.2';
+          el.classList.remove('wire-active');
+        }
+      });
+
+      if (type === 'all') {
+        wires.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.opacity = '1';
+        });
+      } else if (type === 'pwr') {
+        document.getElementById('w-pwr').style.opacity = '1';
+        document.getElementById('w-pwr').classList.add('wire-active');
+      } else if (type === 'gnd') {
+        document.getElementById('w-gnd').style.opacity = '1';
+        document.getElementById('w-gnd').classList.add('wire-active');
+      } else if (type === 'sig') {
+        document.getElementById('w-sig').style.opacity = '1';
+        document.getElementById('w-sig').classList.add('wire-active');
+      } else if (type === 'sw') {
+        document.getElementById('w-sw-com').style.opacity = '1';
+        document.getElementById('w-sw-no').style.opacity = '1';
+        document.getElementById('w-sw-com').classList.add('wire-active');
+        document.getElementById('w-sw-no').classList.add('wire-active');
+      }
+    }
+  </script>
+
+</body>
+</html>
