@@ -161,7 +161,7 @@ voice-todo-llm/
 
 ### 1. Clone & Enter Directory
 ```bash
-git clone https://github.com/YOUR_USERNAME/vox-task-slm.git
+git clone https://github.com/subashis-dev/vox-task-slm.git
 cd vox-task-slm
 ```
 
@@ -307,7 +307,7 @@ git commit -m "feat: complete VoxTask 4.8M parameter Voice SLM from scratch with
 git branch -M main
 
 # 5. Link to your GitHub repository (replace with your GitHub username)
-git remote add origin https://github.com/YOUR_USERNAME/vox-task-slm.git
+git remote add origin https://github.com/subashis-dev/vox-task-slm.git
 
 # 6. Push code and model weights to GitHub
 git push -u origin main
