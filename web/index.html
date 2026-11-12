@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoxTask — Voice-Driven Small Language Model (SLM)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      background-color: #05060b;
+      color: #f1f5f9;
+    }
+    .glass-card {
+      background: rgba(13, 18, 30, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 0.3; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .animate-pulse-ring {
+      animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    .wave-bar {
+      transition: height 0.1s ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen selection:bg-cyan-500/20 selection:text-cyan-200">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/10">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/25 text-cyan-300 text-xs font-mono mb-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+          <span>4.8M Parameter Custom Transformer • Zero Pre-trained Weights</span>
+        </div>
+        <h1 class="font-display text-3xl md:text-4xl font-bold tracking-tight text-white flex items-center gap-3">
+          <span>🎙️ VoxTask SLM</span>
+          <span class="text-xs font-mono font-normal px-2.5 py-1 rounded-lg bg-violet-500/20 text-violet-300 border border-violet-500/30">Local-First</span>
+        </h1>
+        <p class="text-slate-400 text-sm mt-1">Autonomous Voice Command to Structured Task & Reminder Engine</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <p class="text-xs font-mono text-slate-400">Model Architecture</p>
+          <p class="text-xs font-mono font-bold text-cyan-400">6L • 8H • 256D • RMSNorm</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-cyan-400 text-xl font-mono">
+          ⚡
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- Left Column: Voice Interface & SLM Terminal -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- Voice Input Control Card -->
+        <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xs font-mono uppercase tracking-wider text-slate-400">Speech Command Interface</h2>
+            <span id="speech-status" class="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Ready
+            </span>
+          </div>
+
+          <!-- Central Microphone Trigger -->
+          <div class="flex flex-col items-center justify-center py-6">
+            <div class="relative">
+              <div id="mic-ring" class="hidden absolute inset-0 -m-3 rounded-full bg-cyan-500/20 border border-cyan-400/50 animate-pulse-ring"></div>
+              <button
+                id="mic-btn"
+                onclick="toggleListening()"
+                class="relative z-10 w-24 h-24 rounded-full bg-gradient-to-tr from-cyan-600 to-violet-600 hover:from-cyan-500 hover:to-violet-500 text-white flex items-center justify-center shadow-lg shadow-cyan-500/25 transition-all transform active:scale-95"
+              >
+                <svg id="mic-icon" class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 02-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              </button>
+            </div>
+            
+            <p id="mic-label" class="mt-4 text-xs font-mono text-slate-300">Click to Speak or Type Below</p>
+            
+            <!-- Audio Wave Animation Placeholder -->
+            <div id="wave-container" class="hidden flex items-center gap-1.5 h-6 mt-3">
+              <div class="w-1 bg-cyan-400 rounded-full h-2 wave-bar animate-pulse"></div>
+              <div class="w-1 bg-cyan-300 rounded-full h-5 wave-bar animate-pulse"></div>
+              <div class="w-1 bg-violet-400 rounded-full h-3 wave-bar animate-pulse"></div>
+              <div class="w-1 bg-cyan-400 rounded-full h-6 wave-bar animate-pulse"></div>
+              <div class="w-1 bg-violet-300 rounded-full h-4 wave-bar animate-pulse"></div>
+            </div>
+          </div>
+
+          <!-- Fallback Text Input -->
+          <form onsubmit="handleManualSubmit(event)" class="mt-4">
+            <div class="relative">
+              <input
+                id="text-input"
+                type="text"
+                placeholder="Or type a voice command..."
+                class="w-full bg-slate-950/80 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition pr-20"
+              />
+              <button
+                type="submit"
+                class="absolute right-2 top-2 px-3.5 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 text-xs font-mono transition"
+              >
+                Parse
+              </button>
+            </div>
+          </form>
+
+          <!-- Quick Test Chips -->
+          <div class="mt-4 pt-4 border-t border-white/5">
+            <p class="text-[11px] font-mono text-slate-400 mb-2">Quick Prompt Presets:</p>
+            <div class="flex flex-wrap gap-1.5">
+              <button onclick="sendPreset(this.innerText)" class="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 transition">
+                Remind me to call Mom tomorrow at 4 pm
+              </button>
+              <button onclick="sendPreset(this.innerText)" class="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 transition">
+                Add buy DDR5 RAM to shopping list
+              </button>
+              <button onclick="sendPreset(this.innerText)" class="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 transition">
+                Mark submit research paper as completed
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-Time SLM Generation Console -->
+        <div class="glass-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xs font-mono uppercase tracking-wider text-slate-400">SLM Reasoning & JSON Telemetry</h2>
+            <span id="latency-badge" class="text-[11px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-400/20">
+              0.0 ms
+            </span>
+          </div>
+
+          <div class="bg-slate-950 rounded-xl p-4 border border-white/5 font-mono text-xs overflow-x-auto">
+            <div class="text-slate-500 mb-2">// Raw Token Stream Output:</div>
+            <pre id="output-json" class="text-emerald-400 whitespace-pre-wrap">{ "status": "Awaiting voice command..." }</pre>
+          </div>
+
+          <div id="spoken-box" class="hidden mt-4 p-3 rounded-xl bg-violet-500/10 border border-violet-400/20 text-xs text-violet-200 flex items-start gap-2.5">
+            <span class="text-base">🔊</span>
+            <div>
+              <p class="font-mono text-[10px] text-violet-400 uppercase">Assistant Spoken Reply</p>
+              <p id="spoken-text" class="mt-0.5 text-slate-200 font-sans"></p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: To-Do & Reminders Dashboard -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <div class="glass-card rounded-2xl p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/5">
+            <div>
+              <h2 class="font-display text-xl font-bold text-white">Active Tasks & Reminders</h2>
+              <p id="stats-summary" class="text-xs font-mono text-slate-400 mt-0.5">Loading tasks...</p>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-white/10 text-xs font-mono">
+              <button onclick="setFilter('all')" id="flt-all" class="px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-medium">All</button>
+              <button onclick="setFilter('REMIND')" id="flt-remind" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white">Reminders</button>
+              <button onclick="setFilter('TODO')" id="flt-todo" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white">To-Dos</button>
+            </div>
+          </div>
+
+          <!-- Tasks List Container -->
+          <div id="tasks-container" class="space-y-3 min-h-[300px]">
+            <!-- Dynamic task items injected via JS -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    let isListening = false;
+    let currentFilter = 'all';
+    let allTasks = [];
+    let recognition = null;
+    let silenceTimer = null;
+    let finalTranscript = '';
+
+    // Initialize robust Web Speech API with continuous listening & auto-reconnect
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;       // Never cut off on short pauses
+      recognition.interimResults = true;   // Live transcript stream as you speak
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        isListening = true;
+        finalTranscript = '';
+        document.getElementById('mic-ring').classList.remove('hidden');
+        document.getElementById('wave-container').classList.remove('hidden');
+        document.getElementById('mic-label').innerText = 'Listening... Speak naturally (click to finish)';
+        document.getElementById('speech-status').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span> Listening...';
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript + ' ';
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        const currentText = (finalTranscript + interimTranscript).trim();
+        document.getElementById('text-input').value = currentText;
+
+        // Smart silence detection: automatically submit when user stops speaking for 1.4 seconds
+        clearTimeout(silenceTimer);
+        if (currentText.length > 0) {
+          silenceTimer = setTimeout(() => {
+            if (isListening && currentText.trim().length > 0) {
+              const toSend = currentText.trim();
+              stopListeningState();
+              if (recognition) {
+                try { recognition.stop(); } catch (e) {}
+              }
+              sendVoiceCommand(toSend);
+            }
+          }, 1400);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('Speech recognition warning:', event.error);
+        if (event.error === 'no-speech') {
+          // Harmless timeout when user pauses, keep listening
+          return;
+        }
+        if (event.error === 'not-allowed' || event.error === 'audio-capture') {
+          stopListeningState();
+        }
+      };
+
+      recognition.onend = () => {
+        // Prevent accidental browser dropouts while user is actively speaking
+        if (isListening) {
+          try {
+            recognition.start();
+          } catch (e) {
+            stopListeningState();
+          }
+        } else {
+          stopListeningState();
+        }
+      };
+    } else {
+      document.getElementById('mic-label').innerText = 'Web Speech not supported in this browser. Use text input below.';
+    }
+
+    function toggleListening() {
+      if (!recognition) {
+        alert('Voice speech recognition is not supported in this browser. Please type your command in the input box!');
+        return;
+      }
+      clearTimeout(silenceTimer);
+      if (isListening) {
+        const text = document.getElementById('text-input').value.trim();
+        stopListeningState();
+        try { recognition.stop(); } catch (e) {}
+        if (text) {
+          sendVoiceCommand(text);
+        }
+      } else {
+        document.getElementById('text-input').value = '';
+        finalTranscript = '';
+        try {
+          recognition.start();
+        } catch (e) {
+          console.warn('Recognition start retry:', e);
+        }
+      }
+    }
+
+    function stopListeningState() {
+      isListening = false;
+      clearTimeout(silenceTimer);
+      document.getElementById('mic-ring').classList.add('hidden');
+      document.getElementById('wave-container').classList.add('hidden');
+      document.getElementById('mic-label').innerText = 'Click to Speak or Type Below';
+      document.getElementById('speech-status').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Ready';
+    }
+
+    async function sendVoiceCommand(text) {
+      if (!text.trim()) return;
+
+      document.getElementById('output-json').innerText = '// Processing tokens through custom SLM...';
+      document.getElementById('latency-badge').innerText = 'Computing...';
+
+      try {
+        const res = await fetch('/api/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          document.getElementById('output-json').innerText = JSON.stringify(data.action, null, 2);
+          document.getElementById('latency-badge').innerText = `${data.inference_ms} ms`;
+          
+          if (data.spoken_reply) {
+            document.getElementById('spoken-box').classList.remove('hidden');
+            document.getElementById('spoken-text').innerText = data.spoken_reply;
+            speakReply(data.spoken_reply);
+          }
+
+          allTasks = data.tasks;
+          renderTasks();
+        } else {
+          document.getElementById('output-json').innerText = `Error: ${data.error || 'Failed to parse'}\nRaw: ${data.raw_output || ''}`;
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById('output-json').innerText = `Network Error: ${err.message}`;
+      }
+    }
+
+    function speakReply(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.05;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function handleManualSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('text-input');
+      sendVoiceCommand(input.value);
+    }
+
+    function sendPreset(text) {
+      document.getElementById('text-input').value = text;
+      sendVoiceCommand(text);
+    }
+
+    async function fetchTasks() {
+      try {
+        const res = await fetch('/api/tasks');
+        const data = await res.json();
+        allTasks = data.tasks || [];
+        renderTasks();
+      } catch (err) {
+        console.error('Failed to load tasks:', err);
+      }
+    }
+
+    async function toggleTask(id) {
+      try {
+        const res = await fetch('/api/tasks/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        allTasks = data.tasks || [];
+        renderTasks();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function deleteTask(id) {
+      try {
+        const res = await fetch('/api/tasks/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        allTasks = data.tasks || [];
+        renderTasks();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function setFilter(flt) {
+      currentFilter = flt;
+      ['all', 'remind', 'todo'].forEach(k => {
+        const btn = document.getElementById(`flt-${k}`);
+        if (k === flt.toLowerCase()) {
+          btn.className = 'px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-medium';
+        } else {
+          btn.className = 'px-3 py-1 rounded-lg text-slate-400 hover:text-white';
+        }
+      });
+      renderTasks();
+    }
+
+    function renderTasks() {
+      const container = document.getElementById('tasks-container');
+      const filtered = allTasks.filter(t => {
+        if (currentFilter === 'all') return true;
+        return t.type === currentFilter;
+      });
+
+      const pending = allTasks.filter(t => !t.completed).length;
+      document.getElementById('stats-summary').innerText = `${pending} pending • ${allTasks.length - pending} completed`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="py-12 text-center text-slate-500 font-mono text-xs">
+            <span class="text-3xl block mb-2">📋</span>
+            No tasks found. Speak or type a command to add one!
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(t => {
+        const isReminder = t.type === 'REMIND';
+        const isDone = Boolean(t.completed);
+        
+        return `
+          <div class="flex items-center justify-between p-4 rounded-xl border ${isDone ? 'bg-slate-950/40 border-white/5 opacity-60' : 'bg-slate-900/60 border-white/10 hover:border-cyan-400/30'} transition group">
+            <div class="flex items-center gap-3.5 flex-1 min-w-0 pr-4">
+              <button
+                onclick="toggleTask('${t.id}')"
+                class="w-5 h-5 rounded-md border ${isDone ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'border-slate-500 hover:border-cyan-400'} flex items-center justify-center shrink-0 transition"
+              >
+                ${isDone ? '✓' : ''}
+              </button>
+              
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium ${isDone ? 'line-through text-slate-500' : 'text-slate-100'} truncate">
+                  ${t.title}
+                </p>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded ${isReminder ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'}">
+                    ${isReminder ? '⏰ ' + (t.time || 'Reminder') : '📝 ' + (t.category || 'To-Do')}
+                  </span>
+                  <span class="text-[10px] font-mono text-slate-500">${t.created_at || ''}</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onclick="deleteTask('${t.id}')"
+              class="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
+              title="Delete task"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Initial load
+    fetchTasks();
+  </script>
+</body>
+</html>

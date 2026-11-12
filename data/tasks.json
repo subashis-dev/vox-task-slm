@@ -1,0 +1,31 @@
+{
+  "tasks": [
+    {
+      "id": "t-1",
+      "type": "REMIND",
+      "title": "Write a SOP",
+      "time": "tomorrow at 5:00 pm",
+      "category": "reminder",
+      "completed": false,
+      "created_at": "2026-11-12 18:39"
+    },
+    {
+      "id": "t-2",
+      "type": "REMIND",
+      "title": "Kent application",
+      "time": "tomorrow at 2:00 am",
+      "category": "reminder",
+      "completed": false,
+      "created_at": "2026-11-12 18:39"
+    },
+    {
+      "id": "t-3",
+      "type": "REMIND",
+      "title": "Call my mom",
+      "time": "today at 5:30 pm",
+      "category": "reminder",
+      "completed": false,
+      "created_at": "2026-11-12 18:39"
+    }
+  ]
+}

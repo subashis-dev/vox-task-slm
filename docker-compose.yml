@@ -1,0 +1,15 @@
+services:
+  voice-todo-slm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vox-task-slm
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+    volumes:
+      # Persistent volume mount so tasks and reminders survive container restarts
+      - ./data:/app/data
