@@ -108,6 +108,7 @@ VoxTask implements a modern **Decoder-Only Causal Transformer** optimized for ed
 | **Max Context Window** | 128 Tokens | Accommodates multi-clause voice prompt + output JSON |
 | **Normalization** | RMSNorm ($\epsilon=10^{-6}$) | Modern, scale-invariant normalization |
 | **Weight Tying** | Enabled | Output projection head shares weights with token embedding |
+| **Model Footprint** | **19.3 MB** (`checkpoint_best.pt`) / **18.9 MB** (`model.onnx`) | 100% self-contained in repository — zero external weights download, no Git LFS required |
 
 ---
 
@@ -279,48 +280,6 @@ Deletes a task by ID: `{"id": "t-1794487154751"}`.
 
 ### `GET /api/health`
 Returns system health, parameter count, and hardware compute device (`cuda` or `cpu`).
-
----
-
-## 🐙 Step-by-Step GitHub Push Guide
-
-To publish this project to your GitHub account:
-
-### Step 1: Create a New GitHub Repository
-1. Visit [github.com/new](https://github.com/new).
-2. Set the repository name (e.g., **`vox-task-slm`** or **`voice-todo-llm`**).
-3. Set visibility to **Public**.
-4. Leave *"Initialize this repository with a README"* **unchecked** (we already have this complete README).
-5. Click **Create repository**.
-
-### Step 2: Initialize Git & Push from PowerShell / Terminal
-Open your terminal inside `voice-todo-llm`:
-
-```bash
-# Navigate to the project directory
-cd vox-task-slm
-
-# 1. Initialize local git repository
-git init
-
-# 2. Add all files to staging (.gitignore automatically filters pycache)
-git add .
-
-# 3. Commit files
-git commit -m "feat: complete VoxTask 4.8M parameter Voice SLM from scratch with RTX 3060 acceleration"
-
-# 4. Set main branch
-git branch -M main
-
-# 5. Link to your GitHub repository (replace with your GitHub username)
-git remote add origin https://github.com/subashis-dev/vox-task-slm.git
-
-# 6. Push code and model weights to GitHub
-git push -u origin main
-```
-
-> [!NOTE]
-> `checkpoint_best.pt` is **19.3 MB**, well within GitHub's standard 100 MB per-file limit. You do **not** need Git LFS or external hosting.
 
 ---
 
