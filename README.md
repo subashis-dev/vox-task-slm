@@ -296,8 +296,9 @@ To publish this project to your GitHub account:
 ### Step 2: Initialize Git & Push from PowerShell / Terminal
 Open your terminal inside `voice-todo-llm`:
 
-```powershell
-cd C:\Users\subas\my-website\voice-todo-llm
+```bash
+# Navigate to the project directory
+cd vox-task-slm
 
 # 1. Initialize local git repository
 git init
