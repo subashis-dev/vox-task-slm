@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoxTask — In-Browser Voice SLM Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- ONNX Runtime Web for 100% In-Browser Neural Inference via WebAssembly/WebGPU -->
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
+  <script src="./tokenizer.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { background-color: #05060b; color: #f1f5f9; }
+    .glass-card {
+      background: rgba(13, 18, 30, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 0.3; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .animate-pulse-ring { animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  </style>
+</head>
+<body class="min-h-screen selection:bg-cyan-500/20 selection:text-cyan-200">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/10">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/25 text-cyan-300 text-xs font-mono mb-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+          <span>100% In-Browser WebAssembly SLM • Zero Backend Servers</span>
+        </div>
+        <h1 class="font-display text-3xl md:text-4xl font-bold tracking-tight text-white flex items-center gap-3">
+          <span>🎙️ VoxTask Live Demo</span>
+          <span class="text-xs font-mono font-normal px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Client-Side AI</span>
+        </h1>
+        <p class="text-slate-400 text-sm mt-1">4.8M Parameter Custom Transformer running locally in your browser</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/subashis-dev/vox-task-slm" target="_blank" class="px-4 py-2 rounded-xl bg-slate-900 border border-white/10 hover:border-cyan-400/40 text-xs font-mono text-cyan-300 flex items-center gap-2 transition">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub Repo
+        </a>
+      </div>
+    </header>
+
+    <!-- Model Loading Banner -->
+    <div id="loader-banner" class="glass-card rounded-2xl p-6 mb-8 border-cyan-500/30">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-bold text-white flex items-center gap-2">
+          <span class="animate-spin text-cyan-400">🌀</span> Loading Neural Weights into WebAssembly...
+        </span>
+        <span id="load-pct" class="text-xs font-mono text-cyan-300">0%</span>
+      </div>
+      <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-white/10">
+        <div id="load-bar" class="bg-gradient-to-r from-cyan-500 to-violet-500 h-2.5 rounded-full w-0 transition-all duration-300"></div>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-2">Downloading ~19 MB custom causal transformer once. Cached permanently in your browser.</p>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- Left Column: Voice Interface -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- Voice Input Control Card -->
+        <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xs font-mono uppercase tracking-wider text-slate-400">Speech Command Interface</h2>
+            <span id="speech-status" class="text-[11px] font-mono text-slate-400 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Initializing...
+            </span>
+          </div>
+
+          <!-- Central Microphone Trigger -->
+          <div class="flex flex-col items-center justify-center py-6">
+            <div class="relative">
+              <div id="mic-ring" class="hidden absolute inset-0 -m-3 rounded-full bg-cyan-500/20 border border-cyan-400/50 animate-pulse-ring"></div>
+              <button
+                id="mic-btn"
+                onclick="toggleListening()"
+                disabled
+                class="relative z-10 w-24 h-24 rounded-full bg-gradient-to-tr from-cyan-600 to-violet-600 hover:from-cyan-500 hover:to-violet-500 text-white flex items-center justify-center shadow-lg shadow-cyan-500/25 transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg id="mic-icon" class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              </button>
+            </div>
+            
+            <p id="mic-label" class="mt-4 text-xs font-mono text-slate-400 text-center">
+              Loading model...
+            </p>
+          </div>
+
+          <!-- Real-Time Text Input Form -->
+          <form onsubmit="handleManualSubmit(event)" class="mt-2">
+            <div class="relative">
+              <input
+                type="text"
+                id="text-input"
+                placeholder="Or type: write a todo to write a sop at 5pm tomorrow..."
+                class="w-full bg-slate-950/70 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-400/60 font-mono transition pr-24"
+              />
+              <button
+                type="submit"
+                id="submit-btn"
+                disabled
+                class="absolute right-1.5 top-1.5 bottom-1.5 px-3.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs font-mono transition flex items-center gap-1 disabled:opacity-30"
+              >
+                Run SLM
+              </button>
+            </div>
+          </form>
+
+          <!-- Preset Clickable Examples -->
+          <div class="mt-4 flex flex-wrap gap-1.5">
+            <button onclick="sendPreset('write a todo list to write a sop at 5pm tomorrow')" class="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 transition">
+              📝 Write SOP 5pm
+            </button>
+            <button onclick="sendPreset('remind me about kent application at 2 am tomorrow')" class="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 transition">
+              🎓 Kent Application
+            </button>
+            <button onclick="sendPreset('add buy groceries tonight to my list')" class="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 transition">
+              🛒 Buy Groceries
+            </button>
+          </div>
+        </div>
+
+        <!-- Real-Time Token Generation Visualizer -->
+        <div class="glass-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-3 border-b border-white/10 pb-3">
+            <h3 class="text-xs font-mono uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <span>🧠</span> In-Browser Token Stream
+            </h3>
+            <span id="latency-badge" class="text-xs font-mono text-cyan-400">
+              WebAssembly Ready
+            </span>
+          </div>
+
+          <pre id="output-json" class="p-3.5 rounded-xl bg-slate-950/90 border border-white/5 font-mono text-xs text-cyan-300 overflow-x-auto min-h-[140px] whitespace-pre-wrap leading-relaxed">// Model loaded directly into browser memory.
+// Speak into your mic or click a preset to generate JSON tokens live!</pre>
+
+          <!-- Spoken Assistant Voice Response -->
+          <div id="spoken-box" class="hidden mt-4 p-3 rounded-xl bg-cyan-950/20 border border-cyan-400/20 flex items-center gap-3">
+            <span class="text-xl">🗣️</span>
+            <div>
+              <p class="text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold">Assistant Voice Output</p>
+              <p id="spoken-text" class="text-xs text-slate-200 mt-0.5 font-medium"></p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Persistent Task Manager (Saved in Browser LocalStorage) -->
+      <div class="lg:col-span-7 space-y-6">
+        <div class="glass-card rounded-2xl p-6 min-h-[560px] flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+              <div>
+                <h2 class="font-display text-xl font-bold text-white flex items-center gap-2">
+                  <span>📋 Persistent Task Dashboard</span>
+                </h2>
+                <p id="stats-summary" class="text-xs font-mono text-slate-400 mt-0.5">3 tasks</p>
+              </div>
+
+              <!-- Filter Tabs -->
+              <div class="flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-white/5 text-xs font-mono">
+                <button id="flt-all" onclick="setFilter('all')" class="px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-medium">All</button>
+                <button id="flt-remind" onclick="setFilter('REMIND')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white">Reminders</button>
+                <button id="flt-todo" onclick="setFilter('TODO')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white">To-Dos</button>
+              </div>
+            </div>
+
+            <!-- Tasks Container -->
+            <div id="tasks-container" class="space-y-3"></div>
+          </div>
+
+          <div class="pt-6 border-t border-white/10 flex items-center justify-between text-xs font-mono text-slate-500">
+            <span>💾 Auto-saved in browser LocalStorage</span>
+            <button onclick="clearAllTasks()" class="hover:text-rose-400 transition">Clear List</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    let tokenizer = null;
+    let ortSession = null;
+    let recognition = null;
+    let isListening = false;
+    let silenceTimer = null;
+    let allTasks = [];
+    let currentFilter = 'all';
+
+    // 1. Load LocalStorage Tasks
+    function loadLocalTasks() {
+      const stored = localStorage.getItem('voxtask_tasks');
+      if (stored) {
+        try { allTasks = JSON.parse(stored); } catch (e) { allTasks = []; }
+      } else {
+        allTasks = [
+          { id: 't-1', type: 'REMIND', title: 'Write a SOP', time: 'tomorrow at 5:00 pm', completed: false, created_at: '2026-11-12 18:39' },
+          { id: 't-2', type: 'REMIND', title: 'Kent application', time: 'tomorrow at 2:00 am', completed: false, created_at: '2026-11-12 18:39' }
+        ];
+        saveLocalTasks();
+      }
+      renderTasks();
+    }
+
+    function saveLocalTasks() {
+      localStorage.setItem('voxtask_tasks', JSON.stringify(allTasks));
+    }
+
+    // 2. Initialize In-Browser ONNX Model & Vocab
+    async function initModel() {
+      const loaderBanner = document.getElementById('loader-banner');
+      const loadBar = document.getElementById('load-bar');
+      const loadPct = document.getElementById('load-pct');
+
+      try {
+        // Step A: Load Vocab
+        loadPct.innerText = '15%';
+        loadBar.style.width = '15%';
+        const vocabRes = await fetch('./vocab.json');
+        const vocabData = await vocabRes.json();
+        tokenizer = new VoiceTaskTokenizer(vocabData);
+
+        // Step B: Load ONNX Model via ONNX Runtime Web
+        loadPct.innerText = '45%';
+        loadBar.style.width = '45%';
+
+        // Configure ONNX WebAssembly
+        ort.env.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 2);
+        ort.env.wasm.proxy = false;
+
+        ortSession = await ort.InferenceSession.create('./model.onnx', {
+          executionProviders: ['wasm']
+        });
+
+        loadPct.innerText = '100%';
+        loadBar.style.width = '100%';
+
+        setTimeout(() => {
+          loaderBanner.classList.add('hidden');
+          document.getElementById('mic-btn').disabled = false;
+          document.getElementById('submit-btn').disabled = false;
+          document.getElementById('mic-label').innerText = 'Click to Speak or Type Below';
+          document.getElementById('speech-status').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Ready';
+        }, 500);
+
+      } catch (err) {
+        console.error('Failed to initialize ONNX model:', err);
+        loaderBanner.innerHTML = `
+          <div class="text-rose-400 text-xs font-mono">
+            ⚠️ Failed to load ONNX model: ${err.message}. Please refresh or verify CORS headers.
+          </div>
+        `;
+      }
+    }
+
+    // 3. In-Browser Autoregressive Generation
+    async function runModelInference(promptText) {
+      if (!ortSession || !tokenizer) return;
+
+      const normPrompt = normalizeVoicePrompt(promptText);
+      const voiceIds = tokenizer.encode(normPrompt.toLowerCase().trim());
+      const inputIds = [tokenizer.bosId, ...voiceIds, tokenizer.sepId];
+
+      const startTime = performance.now();
+      let currentIds = [...inputIds];
+      const maxNewTokens = 120;
+
+      for (let step = 0; step < maxNewTokens; step++) {
+        // Prepare tensor for shape: (1, currentIds.length)
+        const seqLen = currentIds.length;
+        const tensorData = new BigInt64Array(currentIds.map(x => BigInt(x)));
+        const tensor = new ort.Tensor('int64', tensorData, [1, seqLen]);
+
+        const feeds = { input_ids: tensor };
+        const results = await ortSession.run(feeds);
+        const logits = results.logits; // shape: [1, seqLen, vocabSize]
+
+        // Find argmax at the last token position
+        const vocabSize = tokenizer.paddedVocabSize || 192;
+        const lastTokenOffset = (seqLen - 1) * vocabSize;
+        
+        let maxVal = -Infinity;
+        let nextToken = 0;
+        for (let v = 0; v < vocabSize; v++) {
+          const val = logits.data[lastTokenOffset + v];
+          if (val > maxVal) {
+            maxVal = val;
+            nextToken = v;
+          }
+        }
+
+        if (nextToken === tokenizer.eosId) {
+          break;
+        }
+        currentIds.push(nextToken);
+      }
+
+      const elapsedMs = (performance.now() - startTime).toFixed(1);
+
+      // Decode generated tokens
+      const promptLen = inputIds.length;
+      const genIds = currentIds.slice(promptLen);
+      const rawText = tokenizer.decode(genIds).trim();
+
+      return { rawText, elapsedMs };
+    }
+
+    // 4. Handle Voice/Text Execution
+    async function processCommand(text) {
+      if (!text.trim()) return;
+
+      document.getElementById('output-json').innerText = '// Running autoregressive forward pass in WebAssembly...';
+      document.getElementById('latency-badge').innerText = 'Computing...';
+
+      try {
+        const result = await runModelInference(text);
+        if (!result) return;
+
+        let parsedJson = null;
+        try {
+          parsedJson = JSON.parse(result.rawText);
+        } catch (e) {
+          document.getElementById('output-json').innerText = `Syntax parsing error.\nRaw Stream: ${result.rawText}`;
+          return;
+        }
+
+        // Post-processing cleanup
+        if (parsedJson.task) {
+          parsedJson.task = cleanDisplayTitle(parsedJson.task);
+        }
+        const dueTime = parsedJson.time && parsedJson.time.toLowerCase() !== 'unspecified' ? parsedJson.time : '';
+        if (dueTime) {
+          parsedJson.action = 'REMIND';
+        }
+        parsedJson.reply = cleanReplyText(parsedJson.reply || '', parsedJson.task || '', dueTime);
+
+        // Display results
+        document.getElementById('output-json').innerText = JSON.stringify(parsedJson, null, 2);
+        document.getElementById('latency-badge').innerText = `${result.elapsedMs} ms (Wasm)`;
+
+        // Spoken audio feedback
+        if (parsedJson.reply) {
+          document.getElementById('spoken-box').classList.remove('hidden');
+          document.getElementById('spoken-text').innerText = parsedJson.reply;
+          speakReply(parsedJson.reply);
+        }
+
+        // Apply action to LocalStorage
+        applyAction(parsedJson);
+
+      } catch (err) {
+        document.getElementById('output-json').innerText = `Inference Error: ${err.message}`;
+      }
+    }
+
+    function applyAction(actionDict) {
+      const act = actionDict.action;
+      const title = actionDict.task || 'Untitled Task';
+      const dueTime = actionDict.time && actionDict.time.toLowerCase() !== 'unspecified' ? actionDict.time : '';
+
+      if (act === 'REMIND' || dueTime) {
+        allTasks.unshift({
+          id: `t-${Date.now()}`,
+          type: 'REMIND',
+          title: title,
+          time: dueTime || 'No time specified',
+          completed: false,
+          created_at: new Date().toISOString().slice(0, 16).replace('T', ' ')
+        });
+      } else if (act === 'TODO') {
+        allTasks.unshift({
+          id: `t-${Date.now()}`,
+          type: 'TODO',
+          title: title,
+          time: '',
+          completed: false,
+          created_at: new Date().toISOString().slice(0, 16).replace('T', ' ')
+        });
+      } else if (act === 'DONE') {
+        const target = (actionDict.task || '').toLowerCase();
+        for (const t of allTasks) {
+          if (t.title.toLowerCase().includes(target) || target.includes(t.title.toLowerCase())) {
+            t.completed = true;
+            break;
+          }
+        }
+      } else if (act === 'DELETE') {
+        const target = (actionDict.task || '').toLowerCase();
+        allTasks = allTasks.filter(t => !t.title.toLowerCase().includes(target) && !target.includes(t.title.toLowerCase()));
+      }
+
+      saveLocalTasks();
+      renderTasks();
+    }
+
+    function speakReply(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.05;
+        window.speechSynthesis.speak(u);
+      }
+    }
+
+    // 5. Speech Recognition Setup
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        document.getElementById('text-input').value = transcript;
+
+        clearTimeout(silenceTimer);
+        if (transcript.trim().length > 0) {
+          silenceTimer = setTimeout(() => {
+            if (isListening) {
+              const toSend = transcript.trim();
+              stopListeningState();
+              try { recognition.stop(); } catch (e) {}
+              processCommand(toSend);
+            }
+          }, 1400);
+        }
+      };
+
+      recognition.onerror = () => stopListeningState();
+      recognition.onend = () => { if (isListening) try { recognition.start(); } catch (e) { stopListeningState(); } };
+    }
+
+    function toggleListening() {
+      if (!recognition) {
+        alert('Web Speech API not supported in this browser. Please type in the text box!');
+        return;
+      }
+      if (isListening) {
+        const text = document.getElementById('text-input').value.trim();
+        stopListeningState();
+        try { recognition.stop(); } catch (e) {}
+        if (text) processCommand(text);
+      } else {
+        document.getElementById('text-input').value = '';
+        isListening = true;
+        document.getElementById('mic-ring').classList.remove('hidden');
+        document.getElementById('mic-label').innerText = 'Listening... Speak naturally!';
+        document.getElementById('speech-status').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span> Listening...';
+        try { recognition.start(); } catch (e) {}
+      }
+    }
+
+    function stopListeningState() {
+      isListening = false;
+      clearTimeout(silenceTimer);
+      document.getElementById('mic-ring').classList.add('hidden');
+      document.getElementById('mic-label').innerText = 'Click to Speak or Type Below';
+      document.getElementById('speech-status').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Ready';
+    }
+
+    function handleManualSubmit(e) {
+      e.preventDefault();
+      const val = document.getElementById('text-input').value.trim();
+      if (val) processCommand(val);
+    }
+
+    function sendPreset(txt) {
+      document.getElementById('text-input').value = txt;
+      processCommand(txt);
+    }
+
+    function toggleTask(id) {
+      for (const t of allTasks) {
+        if (t.id === id) { t.completed = !t.completed; break; }
+      }
+      saveLocalTasks();
+      renderTasks();
+    }
+
+    function deleteTask(id) {
+      allTasks = allTasks.filter(t => t.id !== id);
+      saveLocalTasks();
+      renderTasks();
+    }
+
+    function clearAllTasks() {
+      if (confirm('Clear all tasks?')) {
+        allTasks = [];
+        saveLocalTasks();
+        renderTasks();
+      }
+    }
+
+    function setFilter(flt) {
+      currentFilter = flt;
+      ['all', 'REMIND', 'TODO'].forEach(k => {
+        const btn = document.getElementById(`flt-${k.toLowerCase()}`);
+        if (btn) {
+          btn.className = (k === flt) ? 'px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-medium' : 'px-3 py-1 rounded-lg text-slate-400 hover:text-white';
+        }
+      });
+      renderTasks();
+    }
+
+    function renderTasks() {
+      const container = document.getElementById('tasks-container');
+      const filtered = allTasks.filter(t => (currentFilter === 'all') || (t.type === currentFilter));
+      const pending = allTasks.filter(t => !t.completed).length;
+
+      document.getElementById('stats-summary').innerText = `${pending} pending • ${allTasks.length - pending} completed`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="py-12 text-center text-slate-500 font-mono text-xs">
+            <span class="text-3xl block mb-2">📋</span>
+            No tasks found. Speak or type to add one!
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(t => {
+        const isReminder = t.type === 'REMIND';
+        const isDone = Boolean(t.completed);
+        return `
+          <div class="flex items-center justify-between p-3.5 rounded-xl border ${isDone ? 'bg-slate-950/40 border-white/5 opacity-60' : 'bg-slate-900/60 border-white/10 hover:border-cyan-400/30'} transition group">
+            <div class="flex items-center gap-3 flex-1 min-w-0 pr-3">
+              <button onclick="toggleTask('${t.id}')" class="w-5 h-5 rounded-md border ${isDone ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'border-slate-500 hover:border-cyan-400'} flex items-center justify-center shrink-0 transition">
+                ${isDone ? '✓' : ''}
+              </button>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium ${isDone ? 'line-through text-slate-500' : 'text-slate-100'} truncate">${t.title}</p>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded ${isReminder ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'}">
+                    ${isReminder ? '⏰ ' + (t.time || 'Reminder') : '📝 To-Do'}
+                  </span>
+                  <span class="text-[10px] font-mono text-slate-500">${t.created_at || ''}</span>
+                </div>
+              </div>
+            </div>
+            <button onclick="deleteTask('${t.id}')" class="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Init
+    loadLocalTasks();
+    initModel();
+  </script>
+</body>
+</html>
